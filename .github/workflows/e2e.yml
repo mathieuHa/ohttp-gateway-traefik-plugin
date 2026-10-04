@@ -1,0 +1,34 @@
+name: E2E
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Traefik ${{ matrix.traefik }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest supported v2, first v3 and latest v3.
+        traefik: ["v2.11.57", "v3.0.4", "v3.7.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/e2e/go.mod
+          cache-dependency-path: tests/e2e/go.sum
+      - name: Run e2e suite
+        run: ./tests/e2e/run.sh
+        env:
+          TRAEFIK_VERSION: ${{ matrix.traefik }}

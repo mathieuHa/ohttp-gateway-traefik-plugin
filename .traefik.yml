@@ -1,0 +1,17 @@
+displayName: OHTTP Gateway
+type: middleware
+iconPath: .assets/icon.png
+
+import: github.com/mathieuHa/ohttp-gateway-traefik-plugin
+
+summary: Oblivious HTTP (RFC 9458) gateway. Decrypts encapsulated requests relayed by an OHTTP relay, serves them through Traefik and encrypts the responses, so that relays cannot read the content and targets cannot see the client IP.
+
+testData:
+  gatewayPath: /.well-known/ohttp-gateway
+  keys:
+    # Example key from RFC 9458, Appendix A. Never use it in production.
+    - keyId: 1
+      kem: X25519
+      privateKey: 3c168975674b2fa8e465970b79c8dcf09f1c741626480bd4c6162fc5b6a98e1a
+      suites:
+        - HKDF-SHA256/AES-128-GCM

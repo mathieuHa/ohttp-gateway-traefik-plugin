@@ -1,0 +1,82 @@
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod
+          (cd tests/e2e && go mod tidy && git diff --exit-code go.mod go.sum)
+      - name: golangci-lint (plugin)
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.5.0
+      - name: golangci-lint (e2e)
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.5.0
+          working-directory: tests/e2e
+
+  test:
+    name: Unit tests (Go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1.22 is the floor imposed by Yaegi v0.16 (bundled in Traefik): it
+        # guarantees that no newer standard library API is used.
+        go: ["1.22", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Test
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+  yaegi:
+    name: Unit tests (Yaegi ${{ matrix.yaegi }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with the Yaegi version bundled in supported Traefik releases.
+        yaegi: ["v0.16.1"]
+    env:
+      CGO_ENABLED: 0
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      # Yaegi resolves imports from GOPATH, so the repository is checked out
+      # at its import path.
+      - uses: actions/checkout@v4
+        with:
+          path: go/src/github.com/${{ github.repository }}
+      - name: Install Yaegi
+        run: go install github.com/traefik/yaegi/cmd/yaegi@${{ matrix.yaegi }}
+      - name: Run tests with Yaegi
+        run: make yaegi_test
+        env:
+          GOPATH: ${{ github.workspace }}/go

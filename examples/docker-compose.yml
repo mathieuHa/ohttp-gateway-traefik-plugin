@@ -1,0 +1,24 @@
+# Local playground: Traefik loads the plugin from this repository (local
+# plugin mode) and exposes an OHTTP gateway in front of traefik/whoami.
+#
+#   docker compose -f examples/docker-compose.yml up
+#   curl -s -H 'Host: gateway.localhost' http://localhost:8080/.well-known/ohttp-gateway | xxd
+services:
+  traefik:
+    image: traefik:v3.7
+    command:
+      - --entrypoints.web.address=:8080
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --experimental.localplugins.ohttp.modulename=github.com/mathieuHa/ohttp-gateway-traefik-plugin
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ..:/plugins-local/src/github.com/mathieuHa/ohttp-gateway-traefik-plugin:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./gateway.key:/etc/traefik/gateway.key:ro
+    working_dir: /
+
+  whoami:
+    image: traefik/whoami:v1.10

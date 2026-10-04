@@ -1,0 +1,66 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - gocritic
+    - gocyclo
+    - godot
+    - gosec
+    - misspell
+    - nolintlint
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+  settings:
+    depguard:
+      rules:
+        # The plugin is interpreted by Yaegi inside Traefik: only the standard
+        # library and the plugin's own packages may be used.
+        main:
+          files:
+            - $all
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/mathieuHa/ohttp-gateway-traefik-plugin
+    gocyclo:
+      min-complexity: 20
+    gosec:
+      excludes:
+        # Integer conversions are bounds-checked by the binary codecs; G115
+        # cannot see those checks.
+        - G115
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true # The root package name is imposed by Traefik.
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Response bodies are closed by the e2e helpers, and the inner responses
+      # decoded by ohttp-go carry in-memory bodies.
+      - path: tests/e2e/
+        linters:
+          - bodyclose
+      - path: _test\.go
+        linters:
+          - gosec
+          - gocyclo
+          - prealloc
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

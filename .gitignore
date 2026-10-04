@@ -1,0 +1,5 @@
+# Traefik binaries downloaded by the e2e suite.
+tests/e2e/.cache/
+# Local plugin layout used when running Traefik by hand.
+plugins-local/
+*.key
