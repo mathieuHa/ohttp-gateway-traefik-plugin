@@ -1,0 +1,24 @@
+http:
+  routers:
+    ohttp-gateway:
+      rule: "Host(`gateway.localhost`)"
+      entryPoints: [web]
+      service: whoami
+      middlewares: [ohttp]
+
+  middlewares:
+    ohttp:
+      plugin:
+        ohttp:
+          keys:
+            - keyId: 1
+              kem: X25519
+              # Generate with: go run ./cmd/ohttp-keygen -out examples/gateway.key
+              privateKeyFile: /etc/traefik/gateway.key
+          paddingBlockSize: 256
+
+  services:
+    whoami:
+      loadBalancer:
+        servers:
+          - url: "http://whoami"

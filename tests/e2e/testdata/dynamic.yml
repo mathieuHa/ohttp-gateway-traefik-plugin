@@ -1,0 +1,79 @@
+# Dynamic Traefik configuration for the e2e suite. @@...@@ placeholders are
+# replaced by the test harness (stack_test.go).
+http:
+  routers:
+    # Gateway and target on the same router: decapsulated requests are served
+    # by the next handler, i.e. the router's service.
+    gateway:
+      rule: "Host(`gateway.localhost`)"
+      entryPoints: [web]
+      service: backend
+      middlewares: [ohttp-next]
+
+    # P-256 key, AES-256-GCM and response padding.
+    gateway-p256:
+      rule: "Host(`p256.localhost`)"
+      entryPoints: [web]
+      service: backend
+      middlewares: [ohttp-p256]
+
+    # Forward mode: decapsulated requests go back through Traefik's entry point
+    # and are routed like any other request, restricted by allowedTargets.
+    gateway-forward:
+      rule: "Host(`forward.localhost`)"
+      entryPoints: [web]
+      service: backend
+      middlewares: [ohttp-forward]
+
+    app:
+      rule: "Host(`app.localhost`)"
+      entryPoints: [web]
+      service: backend
+      middlewares: [app-header]
+
+  middlewares:
+    ohttp-next:
+      plugin:
+        ohttp:
+          keysPath: /ohttp-keys
+          logLevel: DEBUG
+          keys:
+            - keyId: 1
+              seed: "@@SEED_1@@"
+            - keyId: 2
+              seed: "@@SEED_2@@"
+              retired: true
+
+    ohttp-p256:
+      plugin:
+        ohttp:
+          paddingBlockSize: 256
+          keys:
+            - keyId: 7
+              kem: P-256
+              privateKeyFile: "@@P256_KEY_FILE@@"
+              suites:
+                - HKDF-SHA256/AES-256-GCM
+
+    ohttp-forward:
+      plugin:
+        ohttp:
+          forwardUrl: "http://127.0.0.1:@@WEB_PORT@@"
+          forwardTimeout: 5s
+          maxResponseSize: 65536
+          allowedTargets:
+            - app.localhost
+          keys:
+            - keyId: 3
+              seed: "@@SEED_1@@"
+
+    app-header:
+      headers:
+        customResponseHeaders:
+          X-Routed-By: app-router
+
+  services:
+    backend:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:@@BACKEND_PORT@@"
